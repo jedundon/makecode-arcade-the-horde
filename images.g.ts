@@ -22,6 +22,13 @@ namespace myImages {
 . . . . c b 5 5 5 5 b c . . . . 
 . . . . . f f f f f f . . . . . 
 `;
+            case "image2":
+            case "bolt":return img`
+. 4 4 . 
+4 5 5 4 
+2 5 5 2 
+. 2 2 . 
+`;
         }
         return null;
     })

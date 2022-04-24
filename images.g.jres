@@ -4,6 +4,11 @@
         "mimeType": "image/x-mkcd-f4",
         "displayName": "char_static"
     },
+    "image2": {
+        "data": "hwQEAAQAAABAAgAAVCUAAFQlAABAAgAA",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "bolt"
+    },
     "anim3": {
         "namespace": "myAnimations",
         "id": "anim3",

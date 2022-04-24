@@ -1,6 +1,18 @@
 function spriteDistance (s1: Sprite, s2: Sprite) {
     return Math.sqrt((s1.x - s2.x) * (s1.x - s2.x) + (s1.y - s2.y) * (s1.y - s2.y))
 }
+function closestEnemy () {
+    enemy_closest = sprites.allOfKind(SpriteKind.Enemy)[0]
+    enemy_closest_distance = 99999
+    for (let e of sprites.allOfKind(SpriteKind.Enemy)) {
+        enemy_distance = spriteDistance(char, e)
+        if (enemy_distance < enemy_closest_distance) {
+            enemy_closest = e
+            enemy_closest_distance = enemy_distance
+        }
+    }
+    return enemy_closest
+}
 function setupWorld () {
     scroller.setLayerImage(scroller.BackgroundLayer.Layer0, img`
         7777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
@@ -126,6 +138,12 @@ function setupWorld () {
         `)
     scroller.scrollBackgroundWithCamera(scroller.CameraScrollMode.BothDirections)
 }
+function setupPlayerMagic () {
+    player_bolt_fire_rate = 500
+    player_bolt_range = 60
+    player_bolt_speed = 50
+    player_bolt_damage = 1
+}
 function degreesToRadians (deg: number) {
     pi = 22 / 7
     return deg / 180 * pi
@@ -186,6 +204,7 @@ function spawnEnemy () {
         . . f b b b b b b c f . . . . . 
         . . . f f f f f f f . . . . . . 
         `, SpriteKind.Enemy)
+    sprites.setDataNumber(mob, "life", 3)
     mob.setPosition(char.x + Math.cos(spawn_angle) * spawn_distance, char.y + (0 - Math.sin(spawn_angle) * spawn_distance))
     characterAnimations.loopFrames(
     mob,
@@ -337,31 +356,44 @@ function spawnEnemy () {
     )
     mob.follow(char, 10)
 }
-let enemy_distance = 0
-let enemy_closest_distance = 0
-let enemy_closest: Sprite = null
+sprites.onOverlap(SpriteKind.Projectile, SpriteKind.Enemy, function (sprite, otherSprite) {
+    if (sprites.readDataString(sprite, "type") == "bolt") {
+        sprites.changeDataNumberBy(otherSprite, "life", 0 - sprites.readDataNumber(sprite, "damage"))
+        if (sprites.readDataNumber(otherSprite, "life") <= 0) {
+            otherSprite.destroy(effects.disintegrate, 100)
+        }
+        sprite.destroy(effects.fire, 100)
+    }
+})
+let projectile: Sprite = null
 let mob: Sprite = null
 let spawn_angle = 0
 let spawn_distance = 0
-let char: Sprite = null
 let pi = 0
+let player_bolt_damage = 0
+let player_bolt_speed = 0
+let player_bolt_range = 0
+let player_bolt_fire_rate = 0
+let char: Sprite = null
+let enemy_distance = 0
+let enemy_closest_distance = 0
+let enemy_closest: Sprite = null
 let enemies_max = 200
 setupWorld()
+setupPlayerMagic()
 setupPlayer()
-game.onUpdateInterval(100, function () {
+game.onUpdate(function () {
+    timer.throttle("bolt", player_bolt_fire_rate, function () {
+        enemy_closest = closestEnemy()
+        if (spriteDistance(char, enemy_closest) <= player_bolt_range) {
+            projectile = sprites.createProjectileFromSprite(assets.image`bolt`, char, Math.sin(Math.atan2(enemy_closest.x - char.x, enemy_closest.y - char.y)) * player_bolt_speed, Math.cos(Math.atan2(enemy_closest.x - char.x, enemy_closest.y - char.y)) * player_bolt_speed)
+            sprites.setDataString(projectile, "type", "bolt")
+            sprites.setDataNumber(projectile, "damage", player_bolt_damage)
+        }
+    })
+})
+game.onUpdateInterval(1000, function () {
     if (sprites.allOfKind(SpriteKind.Enemy).length < enemies_max) {
         spawnEnemy()
-    }
-    enemy_closest = sprites.allOfKind(SpriteKind.Enemy)[0]
-    enemy_closest_distance = 99999
-    for (let e of sprites.allOfKind(SpriteKind.Enemy)) {
-        enemy_distance = spriteDistance(char, e)
-        if (enemy_distance < enemy_closest_distance) {
-            enemy_closest = e
-            enemy_closest_distance = enemy_distance
-        }
-    }
-    if (enemy_closest_distance <= 50) {
-        enemy_closest.destroy(effects.fire, 500)
     }
 })
