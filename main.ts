@@ -149,6 +149,7 @@ function degreesToRadians (deg: number) {
     return deg / 180 * pi
 }
 function setupPlayer () {
+    player_speed = 50
     char = sprites.create(assets.image`char_static`, SpriteKind.Player)
     characterAnimations.loopFrames(
     char,
@@ -180,7 +181,7 @@ function setupPlayer () {
     200,
     characterAnimations.rule(Predicate.MovingRight)
     )
-    controller.moveSprite(char)
+    controller.moveSprite(char, player_speed, player_speed)
     scene.cameraFollowSprite(char)
 }
 function spawnEnemy () {
@@ -369,6 +370,7 @@ let projectile: Sprite = null
 let mob: Sprite = null
 let spawn_angle = 0
 let spawn_distance = 0
+let player_speed = 0
 let pi = 0
 let player_bolt_damage = 0
 let player_bolt_speed = 0
@@ -392,7 +394,7 @@ game.onUpdate(function () {
         }
     })
 })
-game.onUpdateInterval(1000, function () {
+game.onUpdateInterval(500, function () {
     if (sprites.allOfKind(SpriteKind.Enemy).length < enemies_max) {
         spawnEnemy()
     }
