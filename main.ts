@@ -11,7 +11,7 @@ function magicUpdateOrbPositions () {
     player_orb_angle_index = degreesToRadians(game.runtime() / 1000 * player_orb_angular_velocity % 360)
     for (let o of sprites.allOfKind(SpriteKind.orb)) {
         player_orb_angle = player_orb_angle_index + degreesToRadians(sprites.readDataNumber(o, "id") / player_orb_count * 360)
-        o.setPosition(scene.screenWidth() / 2 + Math.cos(player_orb_angle) * player_orb_radius, scene.screenHeight() / 2 + (0 - Math.sin(player_orb_angle) * player_orb_radius))
+        o.setPosition(char.x + Math.cos(player_orb_angle) * player_orb_radius, char.y + (0 - Math.sin(player_orb_angle) * player_orb_radius))
     }
 }
 function closestEnemy () {
@@ -26,6 +26,15 @@ function closestEnemy () {
     }
     return enemy_closest
 }
+function enemyDamaged (e: Sprite, dmg: number) {
+    sprites.changeDataNumberBy(e, "life", 0 - dmg)
+    if (sprites.readDataNumber(e, "life") <= 0) {
+        e.destroy(effects.disintegrate, 100)
+    }
+}
+sprites.onOverlap(SpriteKind.orb, SpriteKind.Enemy, function (sprite, otherSprite) {
+	
+})
 function setupWorld () {
     scroller.setLayerImage(scroller.BackgroundLayer.Layer0, img`
         7777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
@@ -155,11 +164,12 @@ function setupPlayerMagic () {
     player_bolt_fire_rate = 750
     player_bolt_range = 75
     player_bolt_speed = 50
-    player_bolt_damage = 1
+    player_bolt_damage = 0
     player_orb_count = 0
     player_orb_radius = 25
-    player_orb_angular_velocity = 50
-    player_orb_damage = 5
+    player_orb_angular_velocity = 150
+    player_orb_damage = 1
+    player_orb_fire_rate = 250
     magicCreateOrb()
 }
 function degreesToRadians (deg: number) {
@@ -205,7 +215,8 @@ function setupPlayer () {
 function magicCreateOrb () {
     orb = sprites.create(assets.image`orb`, SpriteKind.orb)
     sprites.setDataNumber(orb, "id", player_orb_count)
-    orb.setFlag(SpriteFlag.RelativeToCamera, true)
+    sprites.setDataNumber(orb, "damge", player_orb_damage)
+    orb.setFlag(SpriteFlag.RelativeToCamera, false)
     player_orb_count += 1
 }
 function spawnEnemy () {
@@ -229,7 +240,7 @@ function spawnEnemy () {
         . . f b b b b b b c f . . . . . 
         . . . f f f f f f f . . . . . . 
         `, SpriteKind.Enemy)
-    sprites.setDataNumber(mob, "life", 2)
+    sprites.setDataNumber(mob, "life", 3)
     mob.setPosition(char.x + Math.cos(spawn_angle) * spawn_distance, char.y + (0 - Math.sin(spawn_angle) * spawn_distance))
     mob.z = -1
     characterAnimations.loopFrames(
@@ -384,30 +395,27 @@ function spawnEnemy () {
 }
 sprites.onOverlap(SpriteKind.Projectile, SpriteKind.Enemy, function (sprite, otherSprite) {
     if (sprites.readDataString(sprite, "type") == "bolt") {
-        sprites.changeDataNumberBy(otherSprite, "life", 0 - sprites.readDataNumber(sprite, "damage"))
-        if (sprites.readDataNumber(otherSprite, "life") <= 0) {
-            otherSprite.destroy(effects.disintegrate, 100)
-        }
+        enemyDamaged(otherSprite, sprites.readDataNumber(sprite, "damage"))
         sprite.destroy(effects.fire, 100)
     }
 })
-let bolt: Sprite = null
 let mob: Sprite = null
 let spawn_angle = 0
 let spawn_distance = 0
 let orb: Sprite = null
 let player_speed = 0
 let pi = 0
+let player_orb_fire_rate = 0
 let player_orb_damage = 0
 let player_bolt_damage = 0
 let player_bolt_speed = 0
 let player_bolt_range = 0
 let player_bolt_fire_rate = 0
-let char: Sprite = null
 let enemy_distance = 0
 let enemy_closest_distance = 0
 let enemy_closest: Sprite = null
 let player_orb_radius = 0
+let char: Sprite = null
 let player_orb_count = 0
 let player_orb_angle = 0
 let player_orb_angular_velocity = 0
@@ -418,17 +426,18 @@ setupPlayerMagic()
 setupPlayer()
 game.onUpdate(function () {
     magicUpdateOrbPositions()
-    timer.throttle("bolt", player_bolt_fire_rate, function () {
-        enemy_closest = closestEnemy()
-        if (spriteDistance(char, enemy_closest) <= player_bolt_range) {
-            bolt = sprites.createProjectileFromSprite(assets.image`bolt`, char, Math.sin(Math.atan2(enemy_closest.x - char.x, enemy_closest.y - char.y)) * player_bolt_speed, Math.cos(Math.atan2(enemy_closest.x - char.x, enemy_closest.y - char.y)) * player_bolt_speed)
-            sprites.setDataString(bolt, "type", "bolt")
-            sprites.setDataNumber(bolt, "damage", player_bolt_damage)
-        }
-    })
 })
 game.onUpdateInterval(500, function () {
     if (sprites.allOfKind(SpriteKind.Enemy).length < enemies_max) {
         spawnEnemy()
+    }
+})
+game.onUpdateInterval(player_orb_fire_rate, function () {
+    for (let e of sprites.allOfKind(SpriteKind.Enemy)) {
+        for (let o of sprites.allOfKind(SpriteKind.orb)) {
+            if (o.overlapsWith(e)) {
+                enemyDamaged(o, sprites.readDataNumber(e, "damage"))
+            }
+        }
     }
 })
